@@ -1,10 +1,16 @@
 const canvas = document.querySelector("canvas");
-const ctx = canvas.getContext("2d");
+const ctx = canvas.getContext("2d",
+  {
+    willReadFrequently: true
+  }
+);
 
 canvas.style.backgroundColor = "black";
 
 let canvasW = (canvas.width = window.innerWidth);
 let canvasH = (canvas.height = window.innerHeight);
+
+
 
 const image = new Image();
 
@@ -46,27 +52,34 @@ class Particules {
   constructor(color = null) {
     this.radius = 1;
     this.x = Math.random() * (canvasW - this.radius) + this.radius;
-    this.y = Math.random() * (0 - canvasH);
-    this.vy = Math.random() * (2  -1) + 1;
+    this.y = Math.random() * -canvasH;
+    this.speed = 100;
+    this.vy = 0;
     this.color = color ?? "rgba(0,0,0,1)";
+    this.lastTime = performance.now()
   }
 
   draw() {
     ctx.beginPath();
-    
+
     ctx.fillStyle = this.color;
     ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI);
     ctx.fill();
-
-    this.update();
   }
 
-  update() {
-    this.y += this.vy;
+  update(timestamp) {
+
+    const deltaTime = (timestamp - this.lastTime) / 1000;
+    this.lastTime = timestamp;
+
+    this.vy += this.speed * deltaTime;
+
+    this.y += this.vy * deltaTime
 
     if (this.y > canvasH) {
-      this.y = 0;
-      this.x = Math.random() * canvasW; 
+      this.y = Math.random() * -canvasH;
+      this.vy = 0;
+      this.x = Math.random() * canvasW;
     }
   }
 }
@@ -76,7 +89,7 @@ const particules = [];
 
 const createParticules = () => {
   for (let i = 0; i < maxParticules; i++) {
-    particules.push(new Particules());
+    particules.push(new Particules("blue"));
   }
 };
 
@@ -97,24 +110,31 @@ const checkPixels = () => {
 
       if (a > 0) {
         particules[i].color = `rgba(${r}, ${g}, ${b}, ${a})`;
+
+        particules[i].vy *= 0.99;
       } else {
-        
-        particules[i].color = "rgba(0,0,0,1)";
+
+        particules[i].color = "blue";
       }
     } else {
-      particules[i].color = "rgba(0,0,0,1)";
+      particules[i].color = "blue";
 
     }
   }
 };
 
-const update = () => {
+const update = (timestamp) => {
   ctx.fillStyle = "rgba(0,0,0,0.1)";
   ctx.fillRect(0, 0, canvasW, canvasH);
-  
-  particules.forEach((particule) => particule.draw());
+
   checkPixels();
-  
+  particules.forEach((particule) => {
+    particule.update(timestamp);
+    particule.draw()
+
+  });
+
+
   requestAnimationFrame(update);
 };
 
@@ -123,7 +143,7 @@ const loadScene = async () => {
     await loadImage();
     drawImage();
     createParticules();
-    update();
+    update(performance.now());
   } catch (error) {
     console.log(`Error: ${error.message}`);
   }
